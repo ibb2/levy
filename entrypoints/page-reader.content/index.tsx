@@ -24,7 +24,8 @@ export default defineContentScript({
     // Executed when content script is loaded, can be async
 
     const content = document.body.innerHTML;
+    const article = document.body.querySelector("article")?.innerText
 
-    browser.runtime.sendMessage(content);
+    browser.runtime.sendMessage(article);
   },
 });
