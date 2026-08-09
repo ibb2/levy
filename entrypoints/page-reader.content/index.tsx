@@ -1,3 +1,5 @@
+import { Element } from "@/lib/types";
+
 export default defineContentScript({
   // // Set manifest options
   matches: ["*://*/*"],
@@ -23,25 +25,120 @@ export default defineContentScript({
   main(ctx: ContentScriptContext) {
     // Executed when content script is loaded, can be async
 
-    const content = document.body.innerHTML;
-    const rawArticle = document.body.querySelector("article");
-    console.log("Article html", document.body.querySelector("article"));
-    const article = parseHtml(rawArticle!);
-    // const article = document.body.querySelector("article")?.innerText
+    const content = document.body.querySelector("article");
+
+    if (content == null) {
+      browser.runtime.sendMessage(content);
+      return;
+    }
+
+    const rawArticle = findArticle(content);
+    const article = parseHtml(content, rawArticle);
 
     browser.runtime.sendMessage(article);
   },
 });
 
-const parseHtml = (html: HTMLElement) => {
+const findArticle = (html: HTMLElement) => {
+  // Best effort for finding the main article
+  // Assumes that the div with the most text (<p>) is the article
+  // Return the document if this fails
+
+  const simpleArticle = html
+    .querySelectorAll("div")
+    .values()
+    .filter(
+      (d) =>
+        d.childElementCount > 1 &&
+        d.childNodes
+          .values()
+          .filter((child: ChildNode) => child.nodeName == "p"),
+    )
+    .toArray()
+    .sort((a, b) => b.childElementCount - a.childElementCount)
+    .at(0);
+
+  if (simpleArticle === undefined) return html;
+  return simpleArticle;
+};
+
+const parseHtml = (html: HTMLElement, content: HTMLElement) => {
   const h1 = html.querySelector("h1");
 
-  console.log("h1", h1);
-  const cleanedHtml = clean(html);
-  const paragraphs = p(cleanedHtml);
-  console.log("paragraphs", paragraphs);
 
-  const body = [h1?.innerText, ...paragraphs];
+  const header: Element = {
+    type: "heading",
+    level: 1,
+    nodeName: h1?.nodeName,
+    text: h1?.innerText,
+  };
+
+  console.log("h1", h1);
+  const cleanedContent = clean(content);
+
+  const body: Element[] = [header];
+
+  // console.log("Simple Article, ", simpleArticle);
+  cleanedContent.childNodes.forEach((node: ChildNode) => {
+    switch (node.nodeName) {
+      case "P":
+        body.push({
+          type: "paragraph",
+          level: 0,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+      case "H1":
+        body.push({
+          type: "heading",
+          level: 1,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+      case "H2":
+        body.push({
+          type: "heading",
+          level: 2,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+      case "H3":
+        body.push({
+          type: "heading",
+          level: 3,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+      case "H4":
+        body.push({
+          type: "heading",
+          level: 4,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+      case "H5":
+        body.push({
+          type: "heading",
+          level: 5,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+      case "H6":
+        body.push({
+          type: "heading",
+          level: 6,
+          nodeName: node.nodeName,
+          text: node.textContent,
+        });
+        break;
+    }
+  });
 
   return body;
 };
