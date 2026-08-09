@@ -37,7 +37,8 @@ const parseHtml = (html: HTMLElement) => {
   const h1 = html.querySelector("h1");
 
   console.log("h1", h1);
-  const paragraphs = p(html);
+  const cleanedHtml = clean(html);
+  const paragraphs = p(cleanedHtml);
   console.log("paragraphs", paragraphs);
 
   const body = [h1?.innerText, ...paragraphs];
@@ -45,10 +46,34 @@ const parseHtml = (html: HTMLElement) => {
   return body;
 };
 
+const clean = (html: HTMLElement) => {
+  const footerRemoved = html.querySelector("footer")?.remove();
+
+  return html;
+  return footerRemoved as unknown as HTMLElement;
+};
+
 const p = (html: HTMLElement) => {
   const paragraphs: string[] = [];
 
-  const ps = html.querySelectorAll("p");
+  const simpleArticle = html
+    .querySelectorAll("div")
+    .values()
+    .filter(
+      (d) =>
+        d.childElementCount > 1 &&
+        d.childNodes
+          .values()
+          .filter((child: ChildNode) => child.nodeName == "p"),
+    )
+    .toArray()
+    .sort((a, b) => b.childElementCount - a.childElementCount)
+    .at(0);
+
+  // console.log("Simple Article, ", simpleArticle);
+  const simpleArticleArray = simpleArticle;
+  console.log("Trimmed Article,", simpleArticleArray);
+  const ps = simpleArticleArray?.querySelectorAll("p");
 
   console.log("pargraphs", ps);
 
