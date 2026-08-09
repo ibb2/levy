@@ -12,10 +12,10 @@ function App() {
 
   return (
     <main className="min-h-screen space-y-4 bg-background p-4 text-foreground">
-      <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-4 shadow-sm">
+      <section className="flex flex-col items-start gap-3 rounded-lg bg-card p-4">
         <p>
           {pageContent.map((item) => (
-            <div>{item}</div>
+            <div className="py-1">{item}</div>
           ))}
         </p>
       </section>
