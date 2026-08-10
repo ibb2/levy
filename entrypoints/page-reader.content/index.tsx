@@ -47,6 +47,8 @@ export default defineContentScript({
 
         if (article.length > 1) {
           browser.runtime.sendMessage(article);
+        } else {
+          browser.runtime.sendMessage([])
         }
       }
     });
