@@ -39,7 +39,7 @@ function ArticleComponent(element: Element) {
     console.log("figure, ", element.text);
     return (
       <div
-        className="py-4"
+        className="py-4 rounded-md"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
       />
     );
@@ -48,8 +48,18 @@ function ArticleComponent(element: Element) {
   if (element.nodeName === "PICTURE") {
     console.log("picture, ", element.text);
     return (
-      <picture
-        className="py-4"
+      <div
+        className="py-4 rounded-md"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
+      />
+    );
+  }
+
+  if (element.nodeName === "DIV") {
+    console.log("picture, ", element.text);
+    return (
+      <div
+        className="py-2 leading-5"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
       />
     );
@@ -67,7 +77,7 @@ function ArticleComponent(element: Element) {
 
     const nodeHierarchyStyling =
       element.type === "paragraph"
-        ? "py-0.5 font-normal leading-6"
+        ? "py-0.5 font-normal leading-6 "
         : element.type === "heading"
           ? cn("pt-2 pb-1", headingStyles[element.level] ?? headingStyles[6])
           : "";
@@ -91,7 +101,7 @@ function App() {
   });
 
   return (
-    <main className="flex flex-col min-h-screen space-y-4 bg-background p-4 text-foreground">
+    <main className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-background p-4 text-foreground">
       {pageContent !== null &&
       pageContent !== undefined &&
       pageContent.length > 0 ? (

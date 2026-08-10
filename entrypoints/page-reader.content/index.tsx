@@ -205,6 +205,10 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
           element.nodeName = "PICTURE";
           element.text = DOMPurify.sanitize(pic?.innerHTML!);
           body.push(element);
+        } else {
+          element.type = node.nodeName;
+          element.text = DOMPurify.sanitize(node.innerHTML);
+          body.push(element)
         }
         break;
     }
