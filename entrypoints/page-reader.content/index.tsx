@@ -340,7 +340,14 @@ const author = (body: ArticleElement[], content: HTMLElement) => {
   const authorName = document.head
     .querySelector("meta[name=author]")
     ?.getAttribute("content");
-  const date = document.body.querySelector("time")?.getAttribute("datetime");
+  const publishedDate =
+    document.head
+      .querySelector('meta[property="article:published_time"]')
+      ?.getAttribute("content") ||
+    document.body.querySelector("time")?.getAttribute("datetime");
+  const modifiedDate = document.head
+    .querySelector('meta[property="article:modified_time"]')
+    ?.getAttribute("content");
   const avatar = document.body
     .querySelector("img[alt*=avatar]")
     ?.getAttribute("src");
@@ -366,18 +373,42 @@ const author = (body: ArticleElement[], content: HTMLElement) => {
     details.append(name);
   }
 
-  if (date) {
-    const time = document.createElement("time");
-    time.className = "article-byline-date";
-    time.dateTime = date;
+  const formatDate = (date: string) => {
     const parsedDate = new Date(date);
-    time.textContent = Number.isNaN(parsedDate.getTime())
+    return Number.isNaN(parsedDate.getTime())
       ? date
       : new Intl.DateTimeFormat(undefined, {
           day: "numeric",
           month: "long",
           year: "numeric",
         }).format(parsedDate);
+  };
+
+  if (publishedDate) {
+    const time = document.createElement("time");
+    time.className = "article-byline-date";
+    time.dateTime = publishedDate;
+    time.textContent = formatDate(publishedDate);
+    details.append(time);
+  }
+
+  const publishedTimestamp = publishedDate
+    ? new Date(publishedDate).getTime()
+    : Number.NaN;
+  const modifiedTimestamp = modifiedDate
+    ? new Date(modifiedDate).getTime()
+    : Number.NaN;
+
+  if (
+    modifiedDate &&
+    Number.isFinite(publishedTimestamp) &&
+    Number.isFinite(modifiedTimestamp) &&
+    modifiedTimestamp > publishedTimestamp
+  ) {
+    const time = document.createElement("time");
+    time.className = "article-byline-date article-byline-updated";
+    time.dateTime = modifiedDate;
+    time.textContent = `Updated ${formatDate(modifiedDate)}`;
     details.append(time);
   }
 
