@@ -8,6 +8,8 @@ function ArticleComponent({ element }: { element: ArticleElement }) {
   const html = DOMPurify.sanitize(element.text, {
     ADD_TAGS: ["video", "source", "track"],
     ADD_ATTR: ["controls", "poster", "preload", "playsinline", "kind", "srclang", "label", "default"],
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   });
 
   if (element.nodeName === "UL" || element.nodeName === "OL") {

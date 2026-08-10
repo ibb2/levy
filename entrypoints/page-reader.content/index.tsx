@@ -34,6 +34,8 @@ export default defineContentScript({
     //   alert("Highlighted")
     // })
     //
+    let videoObserver: MutationObserver | undefined;
+
     browser.runtime.onMessage.addListener((message) => {
       if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
         const content = document.body.querySelector("article");
@@ -49,6 +51,23 @@ export default defineContentScript({
 
         if (article && article.length > 1) {
           browser.runtime.sendMessage(article);
+
+          if (
+            content.querySelector('[data-component-name="VideoEmbedPlayer"]') &&
+            !content.querySelector("video")
+          ) {
+            videoObserver?.disconnect();
+            videoObserver = new MutationObserver(() => {
+              if (!content.querySelector("video")) return;
+
+              videoObserver?.disconnect();
+              const hydratedArticle = parseHtml(content, findArticle(content));
+              if (hydratedArticle.length > 1) {
+                browser.runtime.sendMessage(hydratedArticle);
+              }
+            });
+            videoObserver.observe(content, { childList: true, subtree: true });
+          }
         } else {
           browser.runtime.sendMessage([])
         }
@@ -200,7 +219,19 @@ const parseHtml = (
 
         node.querySelectorAll("button").forEach((button) => button.remove());
 
-        if (node.firstChild?.nodeName === "FIGURE") {
+        if (node.querySelector("video")) {
+          element.type = "video";
+          element.nodeName = "VIDEO";
+          element.text = sanitizeMedia(node);
+          body.push(element);
+        } else if (
+          node.matches('[data-component-name="VideoEmbedPlayer"]')
+        ) {
+          // Some sites leave an empty player placeholder when the original
+          // video is unavailable. Do not turn that placeholder into a blank
+          // block in the reader.
+          break;
+        } else if (node.firstChild?.nodeName === "FIGURE") {
           const figure = node.querySelector("figure");
           figure
             ?.querySelectorAll("button")
@@ -215,11 +246,6 @@ const parseHtml = (
           element.type = "picture";
           element.nodeName = "PICTURE";
           element.text = pic ? sanitizeMedia(pic) : "";
-          body.push(element);
-        } else if (node.querySelector("video")) {
-          element.type = "video";
-          element.nodeName = "VIDEO";
-          element.text = sanitizeMedia(node);
           body.push(element);
         } else {
           element.type = node.nodeName;
@@ -236,10 +262,30 @@ const parseHtml = (
 const sanitizeMedia = (node: Element, includeNode = false) => {
   const clone = node.cloneNode(true) as HTMLElement;
 
-  clone.querySelectorAll("video").forEach((video) => {
+  const sourceVideos = [
+    ...(node.matches("video") ? [node as HTMLVideoElement] : []),
+    ...node.querySelectorAll<HTMLVideoElement>("video"),
+  ];
+  const clonedVideos = [
+    ...(clone.matches("video") ? [clone as HTMLVideoElement] : []),
+    ...clone.querySelectorAll<HTMLVideoElement>("video"),
+  ];
+
+  clonedVideos.forEach((video, index) => {
+    const sourceVideo = sourceVideos[index];
+    const playableSource =
+      sourceVideo?.currentSrc ||
+      sourceVideo?.src ||
+      sourceVideo?.dataset.src ||
+      sourceVideo?.dataset.videoSrc;
+
+    if (playableSource) {
+      video.src = playableSource;
+    }
     video.controls = true;
     video.removeAttribute("autoplay");
     video.setAttribute("playsinline", "");
+    video.setAttribute("preload", "metadata");
   });
 
   const mediaNodes = [
@@ -248,7 +294,9 @@ const sanitizeMedia = (node: Element, includeNode = false) => {
   ];
   mediaNodes.forEach((media) => {
     ["src", "poster"].forEach((attribute) => {
-      const value = media.getAttribute(attribute);
+      const value =
+        media.getAttribute(attribute) ||
+        media.getAttribute(`data-${attribute}`);
       if (!value || value.startsWith("data:") || value.startsWith("blob:"))
         return;
 
@@ -272,14 +320,15 @@ const sanitizeMedia = (node: Element, includeNode = false) => {
       "label",
       "default",
     ],
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
   });
 };
 
 const clean = (html: HTMLElement) => {
-  const footerRemoved = html.querySelector("footer")?.remove();
-
-  return html;
-  return footerRemoved as unknown as HTMLElement;
+  const clone = html.cloneNode(true) as HTMLElement;
+  clone.querySelector("footer")?.remove();
+  return clone;
 };
 
 const p = (html: HTMLElement) => {
