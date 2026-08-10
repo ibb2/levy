@@ -118,7 +118,11 @@ const parseHtml = (
   html: HTMLElement,
   content: HTMLElement,
 ): ArticleElement[] => {
-  const h1 = html.querySelector("h1");
+  let h1 = html.querySelector("h1");
+
+  if (h1 === undefined || h1 === null) {
+    h1 = document.body.querySelectorAll("h1").values().toArray().at(0)!;
+  }
 
 
   const header: ArticleElement = {
