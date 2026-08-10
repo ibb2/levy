@@ -9,12 +9,19 @@ export default defineConfig({
     name: "Levy",
     description: "A cross-browser side panel built with React and shadcn/ui",
     permissions: ["storage", "tabs"],
-    ...(browser === "firefox" && {
-      browser_action: {
-        default_icon: icons,
-        default_title: "Toggle Levy",
-      },
-    }),
+    ...(browser === "firefox"
+      ? {
+          browser_action: {
+            default_icon: icons,
+            default_title: "Toggle Levy",
+          },
+        }
+      : {
+          action: {
+            default_icon: icons,
+            default_title: "Toggle Levy",
+          },
+        }),
   }),
   vite: () => ({
     plugins: [tailwindcss()],

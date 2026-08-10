@@ -8,26 +8,43 @@ interface BrowserWithSidebar {
 
 export default defineBackground(() => {
   if (browser.sidePanel) {
-    browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+    void browser.sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: true })
+      .catch((error) =>
+        console.error("Unable to enable side panel action:", error),
+      );
   } else {
     const { sidebarAction } = browser as typeof browser & BrowserWithSidebar;
     if (sidebarAction) {
-      browser.browserAction.onClicked.addListener(() => sidebarAction.toggle());
+      browser.browserAction.onClicked.addListener(() => {
+        void sidebarAction
+          .toggle()
+          .catch((error) => console.error("Unable to toggle sidebar:", error));
+      });
     }
   }
 
-  browser.tabs.onActivated.addListener(async (activeInfo) => {
-    const tab = await browser.tabs.get(activeInfo.tabId);
-    browser.tabs.sendMessage(tab.id!, { type: "TAB_CHANGED" });
+  browser.tabs.onActivated.addListener((activeInfo) => {
+    void browser.tabs
+      .sendMessage(activeInfo.tabId, { type: "TAB_CHANGED" })
+      .catch((error) =>
+        console.debug(
+          "Content script is unavailable in the active tab:",
+          error,
+        ),
+      );
   });
 
   browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === "complete" && tab.active) {
-      browser.tabs
+      void browser.tabs
         .sendMessage(tabId, { type: "TAB_UPDATED", url: tab.url })
-        .catch((err) =>
-          console.log("Content script not ready yet or injected:", err),
+        .catch((error) =>
+          console.debug(
+            "Content script is unavailable in the updated tab:",
+            error,
+          ),
         );
     }
-  })
+  });
 });
