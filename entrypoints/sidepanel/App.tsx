@@ -24,6 +24,17 @@ function ArticleComponent(element: Element) {
     );
   }
 
+  if (element.nodeName === "TABLE") {
+    return (
+      <div className="w-full overflow-x-auto py-1">
+        <table
+          className="min-w-max border-collapse border border-border text-left text-sm [&_caption]:p-2 [&_caption]:text-left [&_caption]:font-medium [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:font-medium"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
+        />
+      </div>
+    );
+  }
+
   {
     const headingStyles: Record<number, string> = {
       1: "text-4xl font-bold leading-tight",

@@ -189,6 +189,14 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
           text: DOMPurify.sanitize(node.innerHTML),
         });
         break;
+      case "TABLE":
+        body.push({
+          type: "table",
+          level: 0,
+          nodeName: node.nodeName,
+          text: DOMPurify.sanitize(node.innerHTML),
+        });
+        break;
     }
   }
 
