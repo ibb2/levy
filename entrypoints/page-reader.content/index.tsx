@@ -341,10 +341,10 @@ const author = (body: ArticleElement[], content: HTMLElement) => {
     .querySelector("meta[name=author]")
     ?.getAttribute("content");
   const publishedDate =
+    document.body.querySelector("time")?.getAttribute("datetime") ||
     document.head
       .querySelector('meta[property="article:published_time"]')
-      ?.getAttribute("content") ||
-    document.body.querySelector("time")?.getAttribute("datetime");
+      ?.getAttribute("content");
   const modifiedDate = document.head
     .querySelector('meta[property="article:modified_time"]')
     ?.getAttribute("content");
