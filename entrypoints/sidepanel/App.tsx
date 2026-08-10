@@ -1,11 +1,14 @@
 import { createElement, useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import type { Element } from "@/lib/types";
+import type { Element as ArticleElement } from "@/lib/types";
 
-function ArticleComponent({ element }: { element: Element }) {
+function ArticleComponent({ element }: { element: ArticleElement }) {
   if (element.text === null || element.text === undefined) return null;
 
-  const html = DOMPurify.sanitize(element.text);
+  const html = DOMPurify.sanitize(element.text, {
+    ADD_TAGS: ["video", "source", "track"],
+    ADD_ATTR: ["controls", "poster", "preload", "playsinline", "kind", "srclang", "label", "default"],
+  });
 
   if (element.nodeName === "UL" || element.nodeName === "OL") {
     const List = element.nodeName === "UL" ? "ul" : "ol";
@@ -20,7 +23,11 @@ function ArticleComponent({ element }: { element: Element }) {
     );
   }
 
-  if (element.nodeName === "FIGURE" || element.nodeName === "PICTURE") {
+  if (
+    element.nodeName === "FIGURE" ||
+    element.nodeName === "PICTURE" ||
+    element.nodeName === "VIDEO"
+  ) {
     return <div className="article-media" dangerouslySetInnerHTML={{ __html: html }} />;
   }
 
@@ -41,10 +48,10 @@ function ArticleComponent({ element }: { element: Element }) {
 }
 
 function App() {
-  const [pageContent, setPageContent] = useState<Array<Element> | null>();
+  const [pageContent, setPageContent] = useState<Array<ArticleElement> | null>();
 
   useEffect(() => {
-    const receiveArticle = (message: Array<Element> | null) => setPageContent(message);
+    const receiveArticle = (message: Array<ArticleElement> | null) => setPageContent(message);
     browser.runtime.onMessage.addListener(receiveArticle);
     return () => browser.runtime.onMessage.removeListener(receiveArticle);
   }, []);

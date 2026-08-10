@@ -210,6 +210,11 @@
     margin-inline: auto;
   }
 
+  .reader-article video {
+    width: 100%;
+    background: #101312;
+  }
+
   .reader-article figure {
     margin: 0;
   }

@@ -1,4 +1,4 @@
-import { Element } from "@/lib/types";
+import type { Element as ArticleElement } from "@/lib/types";
 import DOMPurify from "dompurify";
 
 export default defineContentScript({
@@ -95,11 +95,14 @@ const findArticle = (html: HTMLElement) => {
   return simpleArticle;
 };
 
-const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
+const parseHtml = (
+  html: HTMLElement,
+  content: HTMLElement,
+): ArticleElement[] => {
   const h1 = html.querySelector("h1");
 
 
-  const header: Element = {
+  const header: ArticleElement = {
     type: "heading",
     level: 1,
     nodeName: h1?.nodeName,
@@ -108,7 +111,7 @@ const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
 
   const cleanedContent = clean(content);
 
-  const body: Element[] = [header];
+  const body: ArticleElement[] = [header];
 
   // console.log("Simple Article, ", simpleArticle);
   for (let i = 0; i < cleanedContent.children.length; i++) {
@@ -178,7 +181,12 @@ const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
         break;
       case "FIGURE":
         element.type = "figure";
-        element.text = DOMPurify.sanitize(node.innerHTML);
+        element.text = sanitizeMedia(node);
+        body.push(element);
+        break;
+      case "VIDEO":
+        element.type = "video";
+        element.text = sanitizeMedia(node, true);
         body.push(element);
         break;
       default:
@@ -189,6 +197,9 @@ const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
         //   element.text = DOMPurify.sanitize(pic?.innerHTML!);
         //   body.push(element);
         // }
+
+        node.querySelectorAll("button").forEach((button) => button.remove());
+
         if (node.firstChild?.nodeName === "FIGURE") {
           const figure = node.querySelector("figure");
           figure
@@ -196,18 +207,23 @@ const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
             .forEach((button) => button.remove());
           element.type = "figure";
           element.nodeName = node.firstChild?.nodeName ?? "DIV";
-          element.text = DOMPurify.sanitize(figure?.innerHTML ?? "");
+          element.text = figure ? sanitizeMedia(figure) : "";
           body.push(element);
         } else if (node.querySelector("picture")) {
           const pic = node.querySelector("picture");
           pic?.querySelectorAll("button").forEach((button) => button.remove());
           element.type = "picture";
           element.nodeName = "PICTURE";
-          element.text = DOMPurify.sanitize(pic?.innerHTML!);
+          element.text = pic ? sanitizeMedia(pic) : "";
+          body.push(element);
+        } else if (node.querySelector("video")) {
+          element.type = "video";
+          element.nodeName = "VIDEO";
+          element.text = sanitizeMedia(node);
           body.push(element);
         } else {
           element.type = node.nodeName;
-          element.text = DOMPurify.sanitize(node.innerHTML);
+          element.text = sanitizeMedia(node);
           body.push(element)
         }
         break;
@@ -215,6 +231,48 @@ const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
   }
 
   return body;
+};
+
+const sanitizeMedia = (node: Element, includeNode = false) => {
+  const clone = node.cloneNode(true) as HTMLElement;
+
+  clone.querySelectorAll("video").forEach((video) => {
+    video.controls = true;
+    video.removeAttribute("autoplay");
+    video.setAttribute("playsinline", "");
+  });
+
+  const mediaNodes = [
+    clone,
+    ...clone.querySelectorAll<HTMLElement>("video, source, track"),
+  ];
+  mediaNodes.forEach((media) => {
+    ["src", "poster"].forEach((attribute) => {
+      const value = media.getAttribute(attribute);
+      if (!value || value.startsWith("data:") || value.startsWith("blob:"))
+        return;
+
+      try {
+        media.setAttribute(attribute, new URL(value, document.baseURI).href);
+      } catch {
+        // Keep malformed source values unchanged; DOMPurify still sanitizes them.
+      }
+    });
+  });
+
+  return DOMPurify.sanitize(includeNode ? clone.outerHTML : clone.innerHTML, {
+    ADD_TAGS: ["video", "source", "track"],
+    ADD_ATTR: [
+      "controls",
+      "poster",
+      "preload",
+      "playsinline",
+      "kind",
+      "srclang",
+      "label",
+      "default",
+    ],
+  });
 };
 
 const clean = (html: HTMLElement) => {
