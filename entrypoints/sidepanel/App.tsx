@@ -35,6 +35,26 @@ function ArticleComponent(element: Element) {
     );
   }
 
+  if (element.nodeName === "FIGURE") {
+    console.log("figure, ", element.text);
+    return (
+      <div
+        className="py-4"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
+      />
+    );
+  }
+
+  if (element.nodeName === "PICTURE") {
+    console.log("picture, ", element.text);
+    return (
+      <picture
+        className="py-4"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
+      />
+    );
+  }
+
   {
     const headingStyles: Record<number, string> = {
       1: "text-3xl font-bold leading-tight",

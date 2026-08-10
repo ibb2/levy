@@ -45,6 +45,7 @@ export default defineContentScript({
 
         const rawArticle = findArticle(content);
         const article = parseHtml(content, rawArticle);
+        console.log("h1", article);
 
         if (article.length > 1) {
           browser.runtime.sendMessage(article);
@@ -105,7 +106,6 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
     text: h1?.innerText,
   };
 
-  console.log("h1", h1);
   const cleanedContent = clean(content);
 
   const body: Element[] = [header];
@@ -114,11 +114,13 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
   for (let i = 0; i < cleanedContent.children.length; i++) {
     const node = cleanedContent.children.item(i);
 
+    console.log("node", node);
+
     if (node === null) return;
 
     const element = {
       type: "paragraph",
-      level: 0,
+      level: -1,
       nodeName: node.nodeName,
       text: node.textContent,
     };
@@ -171,9 +173,39 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
         break;
       case "TABLE":
         element.type = "table";
-        element.level = 0;
         element.text = DOMPurify.sanitize(node.innerHTML);
         body.push(element);
+        break;
+      case "FIGURE":
+        element.type = "figure";
+        element.text = DOMPurify.sanitize(node.innerHTML);
+        body.push(element);
+        break;
+      default:
+        // if (node.querySelector("picture")) {
+        //   const pic = node.querySelector("picture");
+        //   element.type = "picture";
+        //   element.nodeName = "PICTURE";
+        //   element.text = DOMPurify.sanitize(pic?.innerHTML!);
+        //   body.push(element);
+        // }
+        if (node.firstChild?.nodeName === "FIGURE") {
+          const figure = node.querySelector("figure");
+          figure
+            ?.querySelectorAll("button")
+            .forEach((button) => button.remove());
+          element.type = "figure";
+          element.nodeName = node.firstChild?.nodeName ?? "DIV";
+          element.text = DOMPurify.sanitize(figure?.innerHTML ?? "");
+          body.push(element);
+        } else if (node.querySelector("picture")) {
+          const pic = node.querySelector("picture");
+          pic?.querySelectorAll("button").forEach((button) => button.remove());
+          element.type = "picture";
+          element.nodeName = "PICTURE";
+          element.text = DOMPurify.sanitize(pic?.innerHTML!);
+          body.push(element);
+        }
         break;
     }
   }
