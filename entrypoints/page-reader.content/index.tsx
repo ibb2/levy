@@ -1,4 +1,5 @@
 import { Element } from "@/lib/types";
+import DOMPurify from "dompurify";
 
 export default defineContentScript({
   // // Set manifest options
@@ -110,7 +111,11 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
   const body: Element[] = [header];
 
   // console.log("Simple Article, ", simpleArticle);
-  cleanedContent.childNodes.forEach((node: ChildNode) => {
+  for (let i = 0; i < cleanedContent.children.length; i++) {
+    const node = cleanedContent.children.item(i);
+
+    if (node === null) return;
+
     switch (node.nodeName) {
       case "P":
         body.push({
@@ -168,8 +173,24 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
           text: node.textContent,
         });
         break;
+      case "UL":
+        body.push({
+          type: "list",
+          level: 0,
+          nodeName: node.nodeName,
+          text: DOMPurify.sanitize(node.innerHTML),
+        });
+        break;
+      case "OL":
+        body.push({
+          type: "list",
+          level: 1,
+          nodeName: node.nodeName,
+          text: DOMPurify.sanitize(node.innerHTML),
+        });
+        break;
     }
-  });
+  }
 
   return body;
 };
