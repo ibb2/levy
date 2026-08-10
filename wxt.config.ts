@@ -7,7 +7,8 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: ({ browser }) => ({
     name: "Levy",
-    description: "A cross-browser side panel built with React and shadcn/ui",
+    description:
+      "A focused, cross-browser reading experience in your side-panel.",
     permissions: ["storage", "tabs"],
     ...(browser === "firefox"
       ? {
