@@ -33,6 +33,15 @@ function ArticleComponent({ element }: { element: ArticleElement }) {
     return <div className="article-media" dangerouslySetInnerHTML={{ __html: html }} />;
   }
 
+  if (element.nodeName === "AUTHOR") {
+    return (
+      <div
+        className="article-byline"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+
   if (element.type === "heading") {
     const level = Math.min(6, Math.max(1, element.level || 6));
     return createElement(`h${level}`, {

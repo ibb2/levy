@@ -132,6 +132,7 @@ const parseHtml = (
 
   const body: ArticleElement[] = [header];
 
+  body.push(author(body, cleanedContent))
   // console.log("Simple Article, ", simpleArticle);
   for (let i = 0; i < cleanedContent.children.length; i++) {
     const node = cleanedContent.children.item(i);
@@ -329,6 +330,63 @@ const clean = (html: HTMLElement) => {
   const clone = html.cloneNode(true) as HTMLElement;
   clone.querySelector("footer")?.remove();
   return clone;
+};
+
+const author = (body: ArticleElement[], content: HTMLElement) => {
+  const authorName = document.head
+    .querySelector("meta[name=author]")
+    ?.getAttribute("content");
+  const date = document.body.querySelector("time")?.getAttribute("datetime");
+  const avatar = document.body
+    .querySelector("img[alt*=avatar]")
+    ?.getAttribute("src");
+
+  const byline = document.createElement("div");
+  byline.className = "article-byline-inner";
+
+  if (avatar) {
+    const image = document.createElement("img");
+    image.className = "article-byline-avatar";
+    image.src = avatar;
+    image.alt = "";
+    byline.append(image);
+  }
+
+  const details = document.createElement("div");
+  details.className = "article-byline-details";
+
+  if (authorName) {
+    const name = document.createElement("p");
+    name.className = "article-byline-name";
+    name.textContent = authorName;
+    details.append(name);
+  }
+
+  if (date) {
+    const time = document.createElement("time");
+    time.className = "article-byline-date";
+    time.dateTime = date;
+    const parsedDate = new Date(date);
+    time.textContent = Number.isNaN(parsedDate.getTime())
+      ? date
+      : new Intl.DateTimeFormat(undefined, {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(parsedDate);
+    details.append(time);
+  }
+
+  byline.append(details);
+
+  const authorElement = {
+    type: "P",
+    level: -1,
+    nodeName: "AUTHOR",
+    text: byline.outerHTML,
+  };
+
+  return authorElement;
 };
 
 const p = (html: HTMLElement) => {
