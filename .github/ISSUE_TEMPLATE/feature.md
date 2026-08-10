@@ -7,14 +7,6 @@ assignees: ibb2
 
 ---
 
----
-name: Feature
-about: Track a feature for Levy
-title: "[Feature] "
-labels: "feature"
-assignees: ""
----
-
 ## Goal
 
 As a [type of user], I want [capability] so that [benefit].
