@@ -24,18 +24,45 @@ export default defineContentScript({
 
   main(ctx: ContentScriptContext) {
     // Executed when content script is loaded, can be async
+    //
+    //
 
-    const content = document.body.querySelector("article");
+    console.log("Hello 👋")
 
-    if (content == null) {
-      browser.runtime.sendMessage(content);
-      return;
-    }
+    // browser.tabs.onUpdated.addListener(() => {
+    //   alert("Highlighted")
+    // })
+    //
+    browser.runtime.onMessage.addListener((message) => {
+      if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
+        const content = document.body.querySelector("article");
 
-    const rawArticle = findArticle(content);
-    const article = parseHtml(content, rawArticle);
+        if (content == null) {
+          browser.runtime.sendMessage(content);
+          return;
+        }
 
-    browser.runtime.sendMessage(article);
+        const rawArticle = findArticle(content);
+        const article = parseHtml(content, rawArticle);
+
+        browser.runtime.sendMessage(article);
+      }
+    });
+
+    // console.log("highlighted", browser.tabs.getSelected())
+    // console.log("bye 👋")
+
+    // const content = document.body.querySelector("article");
+
+    // if (content == null) {
+    //   browser.runtime.sendMessage(content);
+    //   return;
+    // }
+
+    // const rawArticle = findArticle(content);
+    // const article = parseHtml(content, rawArticle);
+
+    // browser.runtime.sendMessage(article);
   },
 });
 
