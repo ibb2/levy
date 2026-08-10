@@ -14,7 +14,9 @@ function App() {
 
   return (
     <main className="flex flex-col min-h-screen space-y-4 bg-background p-4 text-foreground">
-      {pageContent !== null && pageContent !== undefined ? (
+      {pageContent !== null &&
+      pageContent !== undefined &&
+      pageContent.length > 0 ? (
         <p>
           {pageContent.map((node: Element) => {
             const headingStyles: Record<number, string> = {

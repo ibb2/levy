@@ -45,7 +45,9 @@ export default defineContentScript({
         const rawArticle = findArticle(content);
         const article = parseHtml(content, rawArticle);
 
-        browser.runtime.sendMessage(article);
+        if (article.length > 1) {
+          browser.runtime.sendMessage(article);
+        }
       }
     });
 
