@@ -114,7 +114,172 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    background: var(--background);
+  }
   body {
     @apply bg-background text-foreground;
+    margin: 0;
+    min-width: 0;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer components {
+  .reader-shell {
+    min-height: 100vh;
+    background: #ffffff;
+    color: #202523;
+  }
+
+  .reader-article {
+    width: min(100%, 43rem);
+    margin-inline: auto;
+    padding: clamp(2rem, 6vw, 3.5rem) clamp(1.25rem, 5vw, 2.75rem) 5rem;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.0625rem, 1rem + 0.22vw, 1.1875rem);
+    line-height: 1.72;
+  }
+
+  .article-heading {
+    margin: 2.2em 0 0.72em;
+    color: #17201d;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 700;
+    line-height: 1.16;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .article-heading-1 {
+    max-width: 18ch;
+    margin-top: 0;
+    margin-bottom: 1.1em;
+    font-size: clamp(2rem, 1.65rem + 2.1vw, 3.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.045em;
+  }
+
+  .article-heading-1::after {
+    content: "";
+    display: block;
+    width: 2.5rem;
+    height: 2px;
+    margin-top: 1.25rem;
+    background: #2c675d;
+  }
+
+  .article-heading-2 { font-size: 1.55em; }
+  .article-heading-3 { font-size: 1.26em; }
+  .article-heading-4,
+  .article-heading-5,
+  .article-heading-6 { font-size: 1.05em; }
+
+  .article-paragraph,
+  .article-block {
+    margin: 0 0 1.35em;
+  }
+
+  .article-block:has(> img, > picture, > figure),
+  .article-block:has(> video, > iframe) {
+    margin-block: 2rem;
+  }
+
+  .article-list {
+    margin: 0 0 1.5em;
+    padding-left: 1.4em;
+  }
+
+  .article-list li {
+    margin-block: 0.48em;
+    padding-left: 0.2em;
+  }
+
+  .article-media {
+    width: calc(100% + clamp(1rem, 3vw, 2rem));
+    margin: 2.1rem calc(clamp(0.5rem, 1.5vw, 1rem) * -1) 2.25rem;
+  }
+
+  .reader-article img,
+  .reader-article picture,
+  .reader-article video,
+  .reader-article iframe {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-inline: auto;
+  }
+
+  .reader-article figure {
+    margin: 0;
+  }
+
+  .reader-article figcaption {
+    margin-top: 0.65rem;
+    color: #68706d;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 0.72em;
+    line-height: 1.45;
+  }
+
+  .reader-article a {
+    color: #27675c;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.16em;
+  }
+
+  .reader-article blockquote {
+    margin: 1.8em 0;
+    padding-left: 1.1em;
+    border-left: 2px solid #2c675d;
+    color: #46504c;
+    font-style: italic;
+  }
+
+  .article-table-wrap {
+    width: 100%;
+    margin: 1.75rem 0;
+    overflow-x: auto;
+  }
+
+  .article-table-wrap table {
+    min-width: 100%;
+    border-collapse: collapse;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 0.78em;
+    line-height: 1.45;
+  }
+
+  .article-table-wrap th,
+  .article-table-wrap td {
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #dce1df;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .article-table-wrap th {
+    background: #f3f5f4;
+    font-weight: 650;
+  }
+
+  .reader-empty {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 2rem;
+    color: #59615e;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    text-align: center;
+  }
+
+  @media (max-width: 26rem) {
+    .reader-article {
+      padding-inline: 1.125rem;
+    }
+
+    .article-heading-1 {
+      font-size: 2rem;
+    }
   }
 }

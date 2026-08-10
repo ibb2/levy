@@ -1,113 +1,64 @@
-import { useState } from "react";
-import { Element } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { createElement, useEffect, useState } from "react";
 import DOMPurify from "dompurify";
+import type { Element } from "@/lib/types";
 
-function ArticleComponent(element: Element) {
-  if (element.text === null || element.text === undefined) return;
+function ArticleComponent({ element }: { element: Element }) {
+  if (element.text === null || element.text === undefined) return null;
 
-  if (element.nodeName === "UL") {
-    return (
-      <ul
-        className="list-disc space-y-2 pl-6 py-1"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
-      />
-    );
-  }
+  const html = DOMPurify.sanitize(element.text);
 
-  if (element.nodeName === "OL") {
-    return (
-      <ol
-        className="list-decimal space-y-2 pl-6 py-1"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
-      />
-    );
+  if (element.nodeName === "UL" || element.nodeName === "OL") {
+    const List = element.nodeName === "UL" ? "ul" : "ol";
+    return <List className="article-list" dangerouslySetInnerHTML={{ __html: html }} />;
   }
 
   if (element.nodeName === "TABLE") {
     return (
-      <div className="w-full overflow-x-auto py-1">
-        <table
-          className="min-w-max border-collapse border border-border text-left text-sm [&_caption]:p-2 [&_caption]:text-left [&_caption]:font-medium [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:p-2 [&_th]:font-medium"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
-        />
+      <div className="article-table-wrap">
+        <table dangerouslySetInnerHTML={{ __html: html }} />
       </div>
     );
   }
 
-  if (element.nodeName === "FIGURE") {
-    console.log("figure, ", element.text);
-    return (
-      <div
-        className="py-4 rounded-md"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
-      />
-    );
+  if (element.nodeName === "FIGURE" || element.nodeName === "PICTURE") {
+    return <div className="article-media" dangerouslySetInnerHTML={{ __html: html }} />;
   }
 
-  if (element.nodeName === "PICTURE") {
-    console.log("picture, ", element.text);
-    return (
-      <div
-        className="py-4 rounded-md"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
-      />
-    );
+  if (element.type === "heading") {
+    const level = Math.min(6, Math.max(1, element.level || 6));
+    return createElement(`h${level}`, {
+      className: `article-heading article-heading-${level}`,
+      dangerouslySetInnerHTML: { __html: html },
+    });
   }
 
-  if (element.nodeName === "DIV") {
-    console.log("picture, ", element.text);
-    return (
-      <div
-        className="py-2 leading-5"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.text) }}
-      />
-    );
-  }
-
-  {
-    const headingStyles: Record<number, string> = {
-      1: "text-3xl font-bold leading-tight",
-      2: "text-2xl font-semibold leading-tight",
-      3: "text-xl font-semibold leading-snug",
-      4: "text-lg font-semibold leading-snug",
-      5: "text-base font-semibold leading-snug",
-      6: "text-base font-medium leading-normal",
-    };
-
-    const nodeHierarchyStyling =
-      element.type === "paragraph"
-        ? "py-0.5 font-normal leading-6 "
-        : element.type === "heading"
-          ? cn("pt-2 pb-1", headingStyles[element.level] ?? headingStyles[6])
-          : "";
-
-    return (
-      <div
-        className={nodeHierarchyStyling}
-        dangerouslySetInnerHTML={{ __html: element.text }}
-      />
-    );
-  }
+  return (
+    <div
+      className={element.nodeName === "DIV" ? "article-block" : "article-paragraph"}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 function App() {
-  const [count, setCount] = useState(0);
   const [pageContent, setPageContent] = useState<Array<Element> | null>();
 
-  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Message, ", message);
-    setPageContent(message);
-  });
+  useEffect(() => {
+    const receiveArticle = (message: Array<Element> | null) => setPageContent(message);
+    browser.runtime.onMessage.addListener(receiveArticle);
+    return () => browser.runtime.onMessage.removeListener(receiveArticle);
+  }, []);
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-background p-4 text-foreground">
-      {pageContent !== null &&
-      pageContent !== undefined &&
-      pageContent.length > 0 ? (
-        <div>{pageContent.map((node: Element) => ArticleComponent(node))}</div>
+    <main className="reader-shell">
+      {pageContent !== null && pageContent !== undefined && pageContent.length > 0 ? (
+        <article className="reader-article">
+          {pageContent.map((element, index) => (
+            <ArticleComponent key={`${element.nodeName}-${index}`} element={element} />
+          ))}
+        </article>
       ) : (
-        <div className="m-auto">
+        <div className="reader-empty">
           <p>Sorry, I couldn't find any articles 😔</p>
         </div>
       )}

@@ -23,7 +23,7 @@ export default defineContentScript({
   // // Configure how/when content script will be registered
   // registration: undefined | "manifest" | "runtime",
 
-  main(ctx: ContentScriptContext) {
+  main() {
     // Executed when content script is loaded, can be async
     //
     //
@@ -47,7 +47,7 @@ export default defineContentScript({
         const article = parseHtml(content, rawArticle);
         console.log("h1", article);
 
-        if (article.length > 1) {
+        if (article && article.length > 1) {
           browser.runtime.sendMessage(article);
         } else {
           browser.runtime.sendMessage([])
@@ -95,7 +95,7 @@ const findArticle = (html: HTMLElement) => {
   return simpleArticle;
 };
 
-const parseHtml = (html: HTMLElement, content: HTMLElement) => {
+const parseHtml = (html: HTMLElement, content: HTMLElement): Element[] => {
   const h1 = html.querySelector("h1");
 
 
@@ -116,7 +116,7 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
 
     console.log("node", node);
 
-    if (node === null) return;
+    if (node === null) continue;
 
     const element = {
       type: "paragraph",
@@ -248,7 +248,7 @@ const p = (html: HTMLElement) => {
 
   console.log("pargraphs", ps);
 
-  ps.forEach((p) => {
+  ps?.forEach((p) => {
     paragraphs.push(p.innerText);
   });
 
