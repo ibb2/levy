@@ -116,86 +116,64 @@ const parseHtml = (html: HTMLElement, content: HTMLElement) => {
 
     if (node === null) return;
 
+    const element = {
+      type: "paragraph",
+      level: 0,
+      nodeName: node.nodeName,
+      text: node.textContent,
+    };
+
     switch (node.nodeName) {
       case "P":
-        body.push({
-          type: "paragraph",
-          level: 0,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        body.push(element);
         break;
       case "H1":
-        body.push({
-          type: "heading",
-          level: 1,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        element.type = "heading";
+        element.level = 1;
+        body.push(element);
         break;
       case "H2":
-        body.push({
-          type: "heading",
-          level: 2,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        element.type = "heading";
+        element.level = 2;
+        body.push(element);
         break;
       case "H3":
-        body.push({
-          type: "heading",
-          level: 3,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        element.type = "heading";
+        element.level = 3;
+        body.push(element);
         break;
       case "H4":
-        body.push({
-          type: "heading",
-          level: 4,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        element.type = "heading";
+        element.level = 4;
+        body.push(element);
         break;
       case "H5":
-        body.push({
-          type: "heading",
-          level: 5,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        element.type = "heading";
+        element.level = 5;
+        body.push(element);
         break;
       case "H6":
-        body.push({
-          type: "heading",
-          level: 6,
-          nodeName: node.nodeName,
-          text: node.textContent,
-        });
+        element.type = "heading";
+        element.level = 6;
+        body.push(element);
         break;
       case "UL":
-        body.push({
-          type: "list",
-          level: 0,
-          nodeName: node.nodeName,
-          text: DOMPurify.sanitize(node.innerHTML),
-        });
+        element.type = "list";
+        element.level = 0;
+        element.text = DOMPurify.sanitize(node.innerHTML);
+        body.push(element);
         break;
       case "OL":
-        body.push({
-          type: "list",
-          level: 1,
-          nodeName: node.nodeName,
-          text: DOMPurify.sanitize(node.innerHTML),
-        });
+        element.type = "list";
+        element.level = 1;
+        element.text = DOMPurify.sanitize(node.innerHTML);
+        body.push(element);
         break;
       case "TABLE":
-        body.push({
-          type: "table",
-          level: 0,
-          nodeName: node.nodeName,
-          text: DOMPurify.sanitize(node.innerHTML),
-        });
+        element.type = "table";
+        element.level = 0;
+        element.text = DOMPurify.sanitize(node.innerHTML);
+        body.push(element);
         break;
     }
   }

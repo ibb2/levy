@@ -37,23 +37,26 @@ function ArticleComponent(element: Element) {
 
   {
     const headingStyles: Record<number, string> = {
-      1: "text-4xl font-bold leading-tight",
-      2: "text-3xl font-semibold leading-tight",
-      3: "text-2xl font-semibold leading-snug",
-      4: "text-xl font-semibold leading-snug",
-      5: "text-lg font-medium leading-snug",
+      1: "text-3xl font-bold leading-tight",
+      2: "text-2xl font-semibold leading-tight",
+      3: "text-xl font-semibold leading-snug",
+      4: "text-lg font-semibold leading-snug",
+      5: "text-base font-semibold leading-snug",
       6: "text-base font-medium leading-normal",
     };
 
     const nodeHierarchyStyling =
       element.type === "paragraph"
-        ? "text-base font-normal leading-7"
+        ? "py-0.5 font-normal leading-6"
         : element.type === "heading"
-          ? (headingStyles[element.level] ?? headingStyles[6])
+          ? cn("pt-2 pb-1", headingStyles[element.level] ?? headingStyles[6])
           : "";
 
     return (
-      <div className={cn("py-1", nodeHierarchyStyling)}>{element.text}</div>
+      <div
+        className={nodeHierarchyStyling}
+        dangerouslySetInnerHTML={{ __html: element.text }}
+      />
     );
   }
 }
