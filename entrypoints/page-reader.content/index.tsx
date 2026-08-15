@@ -1,5 +1,6 @@
-import type { Element as ArticleElement } from "@/lib/types";
+import type { ArticleDocument, Element as ArticleElement } from "@/lib/types";
 import DOMPurify from "dompurify";
+import { Readability } from "@mozilla/readability";
 
 export default defineContentScript({
   // // Set manifest options
@@ -28,7 +29,7 @@ export default defineContentScript({
     //
     //
 
-    console.log("Hello 👋")
+    console.log("Hello 👋");
 
     // browser.tabs.onUpdated.addListener(() => {
     //   alert("Highlighted")
@@ -36,43 +37,57 @@ export default defineContentScript({
     //
     let videoObserver: MutationObserver | undefined;
 
-    browser.runtime.onMessage.addListener((message) => {
-      if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
-        const content = document.body.querySelector("article");
+    // Readability.parse() rewrites the document it receives. Keep that work
+    // off the live page so a site's styles and application DOM stay intact.
+    const documentClone = document.cloneNode(true) as Document;
+    const reader = new Readability(documentClone);
+    const article = reader.parse();
 
-        if (content == null) {
-          browser.runtime.sendMessage(content);
-          return;
-        }
+    if (article === null) {
+      console.log("No article found on page.");
+      return;
+    }
 
-        const rawArticle = findArticle(content);
-        const article = parseHtml(content, rawArticle);
-        console.log("h1", article);
+    const articleDocument = toArticleDocument(article);
+    console.log("article", articleDocument);
 
-        if (article && article.length > 1) {
-          browser.runtime.sendMessage(article);
+    // browser.runtime.onMessage.addListener((message) => {
+    //   if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
+    //     const content = document.body.querySelector("article");
 
-          if (
-            content.querySelector('[data-component-name="VideoEmbedPlayer"]') &&
-            !content.querySelector("video")
-          ) {
-            videoObserver?.disconnect();
-            videoObserver = new MutationObserver(() => {
-              if (!content.querySelector("video")) return;
+    //     if (content == null) {
+    //       browser.runtime.sendMessage(content);
+    //       return;
+    //     }
 
-              videoObserver?.disconnect();
-              const hydratedArticle = parseHtml(content, findArticle(content));
-              if (hydratedArticle.length > 1) {
-                browser.runtime.sendMessage(hydratedArticle);
-              }
-            });
-            videoObserver.observe(content, { childList: true, subtree: true });
-          }
-        } else {
-          browser.runtime.sendMessage([])
-        }
-      }
-    });
+    //     const rawArticle = findArticle(content);
+    //     const article = parseHtml(content, rawArticle);
+    //     console.log("h1", article);
+
+    //     if (article && article.length > 1) {
+    //       browser.runtime.sendMessage(article);
+
+    //       if (
+    //         content.querySelector('[data-component-name="VideoEmbedPlayer"]') &&
+    //         !content.querySelector("video")
+    //       ) {
+    //         videoObserver?.disconnect();
+    //         videoObserver = new MutationObserver(() => {
+    //           if (!content.querySelector("video")) return;
+
+    //           videoObserver?.disconnect();
+    //           const hydratedArticle = parseHtml(content, findArticle(content));
+    //           if (hydratedArticle.length > 1) {
+    //             browser.runtime.sendMessage(hydratedArticle);
+    //           }
+    //         });
+    //         videoObserver.observe(content, { childList: true, subtree: true });
+    //       }
+    //     } else {
+    //       browser.runtime.sendMessage([]);
+    //     }
+    //   }
+    // });
 
     // console.log("highlighted", browser.tabs.getSelected())
     // console.log("bye 👋")
@@ -91,8 +106,35 @@ export default defineContentScript({
   },
 });
 
+const toArticleDocument = (article: {
+  title?: string | null;
+  content?: string | null;
+  textContent?: string | null;
+  length?: number | null;
+  excerpt?: string | null;
+  byline?: string | null;
+  siteName?: string | null;
+  lang?: string | null;
+  dir?: string | null;
+  publishedTime?: string | null;
+}): ArticleDocument => {
+  return {
+    title: article.title ?? "",
+    content: article.content ?? "",
+    textContent: article.textContent ?? "",
+    length: article.length ?? 0,
+    excerpt: article.excerpt ?? "",
+    byline: article.byline ?? "",
+    dir: article.dir ?? "",
+    siteName: article.siteName ?? "",
+    lang: article.lang ?? "",
+    publishedTime: article.publishedTime ?? "",
+    html: DOMPurify.sanitize(document),
+    segments: [],
+  };
+};
+
 const findArticle = (html: HTMLElement) => {
-  // Best effort for finding the main article
   // Assumes that the div with the most text (<p>) is the article
   // Return the document if this fails
 
@@ -124,7 +166,6 @@ const parseHtml = (
     h1 = document.body.querySelectorAll("h1").values().toArray().at(0)!;
   }
 
-
   const header: ArticleElement = {
     type: "heading",
     level: 1,
@@ -136,7 +177,7 @@ const parseHtml = (
 
   const body: ArticleElement[] = [header];
 
-  body.push(author(body, cleanedContent))
+  body.push(author(body, cleanedContent));
   // console.log("Simple Article, ", simpleArticle);
   for (let i = 0; i < cleanedContent.children.length; i++) {
     const node = cleanedContent.children.item(i);
@@ -229,9 +270,7 @@ const parseHtml = (
           element.nodeName = "VIDEO";
           element.text = sanitizeMedia(node);
           body.push(element);
-        } else if (
-          node.matches('[data-component-name="VideoEmbedPlayer"]')
-        ) {
+        } else if (node.matches('[data-component-name="VideoEmbedPlayer"]')) {
           // Some sites leave an empty player placeholder when the original
           // video is unavailable. Do not turn that placeholder into a blank
           // block in the reader.
@@ -255,7 +294,7 @@ const parseHtml = (
         } else {
           element.type = node.nodeName;
           element.text = sanitizeMedia(node);
-          body.push(element)
+          body.push(element);
         }
         break;
     }
