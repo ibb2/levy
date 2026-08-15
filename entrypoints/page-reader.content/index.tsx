@@ -1,6 +1,10 @@
 import type { ArticleDocument, Element as ArticleElement } from "@/lib/types";
 import DOMPurify from "dompurify";
 import { Readability } from "@mozilla/readability";
+import App from "./app";
+import ReactDOM from "react-dom/client";
+import "@/assets/tailwind.css";
+import "@/lib/index.css";
 
 export default defineContentScript({
   // // Set manifest options
@@ -19,17 +23,36 @@ export default defineContentScript({
   // exclude: undefined | string[],
 
   // // Configure how CSS is injected onto the page
-  // cssInjectionMode: undefined | "manifest" | "manual" | "ui",
+  cssInjectionMode: "ui",
 
   // // Configure how/when content script will be registered
   // registration: undefined | "manifest" | "runtime",
 
-  main() {
+  async main(ctx) {
     // Executed when content script is loaded, can be async
     //
-    //
 
-    console.log("Hello 👋");
+    const ui = await createShadowRootUi(ctx, {
+      name: "floating-player-bar",
+      position: "overlay",
+      // Keep the host outside app-managed body children so SPA hydration
+      // cannot remove the player after it mounts.
+      anchor: "html",
+      onMount: (container) => {
+        const app = document.createElement("div");
+        app.id = "floating-player-bar-root";
+        container.appendChild(app);
+
+        const root = ReactDOM.createRoot(app);
+        root.render(<App />);
+        return root;
+      },
+      onRemove: (root) => {
+        root?.unmount();
+      },
+    });
+
+    ui.mount();
 
     // browser.tabs.onUpdated.addListener(() => {
     //   alert("Highlighted")
@@ -129,7 +152,7 @@ const toArticleDocument = (article: {
     siteName: article.siteName ?? "",
     lang: article.lang ?? "",
     publishedTime: article.publishedTime ?? "",
-    html: DOMPurify.sanitize(document),
+    html: DOMPurify.sanitize(document.documentElement.outerHTML),
     segments: [],
   };
 };
