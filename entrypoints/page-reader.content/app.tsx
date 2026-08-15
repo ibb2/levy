@@ -1,13 +1,11 @@
 import { useState } from "react";
 
 export default () => {
-  const [count, setCount] = useState(1);
-  const increment = () => setCount((count) => count + 1);
 
   return (
-    <div className="bg-amber-200">
-      <p>This is React. {count}</p>
-      <button onClick={increment}>Increment</button>
+    <div className="flex items-center justify-around bg-amber-200 p-2">
+      <button>Play</button>
+      <button>Pause</button>
     </div>
   );
 };
