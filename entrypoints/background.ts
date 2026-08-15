@@ -1,20 +1,20 @@
 import { browser } from "wxt/browser";
 
-interface BrowserWithSidebar {
-  sidebarAction?: {
-    toggle(): Promise<void>;
-  };
-}
+// interface BrowserWithSidebar {
+//   sidebarAction?: {
+//     toggle(): Promise<void>;
+//   };
+// }
 
 export default defineBackground(() => {
-  if (browser.sidePanel) {
-    browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-  } else {
-    const { sidebarAction } = browser as typeof browser & BrowserWithSidebar;
-    if (sidebarAction) {
-      browser.browserAction.onClicked.addListener(() => sidebarAction.toggle());
-    }
-  }
+  // if (false) {
+  //   browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  // } else {
+  //   const { sidebarAction } = browser as typeof browser & BrowserWithSidebar;
+  //   if (sidebarAction) {
+  //     browser.browserAction.onClicked.addListener(() => sidebarAction.toggle());
+  //   }
+  // }
 
   browser.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await browser.tabs.get(activeInfo.tabId);
