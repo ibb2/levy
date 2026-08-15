@@ -1,10 +1,13 @@
-import type { ArticleDocument, Element as ArticleElement } from "@/lib/types";
+import type {
+  ArticleDocument,
+  Element as ArticleElement,
+} from "@/shared/types";
 import DOMPurify from "dompurify";
-import { Readability } from "@mozilla/readability";
+import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import App from "./app";
 import ReactDOM from "react-dom/client";
 import "@/assets/tailwind.css";
-import "@/lib/index.css";
+import "@/shared/index.css";
 
 export default defineContentScript({
   // // Set manifest options
@@ -30,7 +33,14 @@ export default defineContentScript({
 
   async main(ctx) {
     // Executed when content script is loaded, can be async
-    //
+
+    if (
+      !isProbablyReaderable(document) ||
+      document.body.querySelector("article") === null
+    ) {
+      console.log("Not a readerable page");
+      return;
+    }
 
     const ui = await createShadowRootUi(ctx, {
       name: "floating-player-bar",

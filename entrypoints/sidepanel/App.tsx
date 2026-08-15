@@ -1,6 +1,6 @@
 import { createElement, useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import type { Element as ArticleElement } from "@/lib/types";
+import type { Element as ArticleElement } from "@/shared/types";
 
 function ArticleComponent({ element }: { element: ArticleElement }) {
   if (element.text === null || element.text === undefined) return null;
