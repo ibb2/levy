@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Pause, Play, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type AppProps = {
@@ -7,23 +7,30 @@ type AppProps = {
 
 export default ({ onHide }: AppProps) => {
 
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const play = () => {
     browser.runtime.sendMessage({ command: "Play" });
+    setIsPlaying(true);
   };
 
   const pause = () => {
     browser.runtime.sendMessage({ command: "Pause" });
+    setIsPlaying(false);
   };
 
   return (
     <div className="flex items-center gap-2 bg-amber-200 p-2">
-      <Button variant="ghost" onClick={play}>
-        Play
-      </Button>
-      <Button variant="ghost" onClick={pause}>
-        Pause
-      </Button>
+      {!isPlaying && (
+        <Button variant="ghost" onClick={play}>
+          <Play />
+        </Button>
+      )}
+      {isPlaying && (
+        <Button variant="ghost" onClick={pause}>
+          <Pause />
+        </Button>
+      )}
       <Button
         className="ml-auto"
         variant="ghost"
