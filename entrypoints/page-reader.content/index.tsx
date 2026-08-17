@@ -35,13 +35,8 @@ export default defineContentScript({
   async main(ctx) {
     // Executed when content script is loaded, can be async
 
-    if (
-      !isProbablyReaderable(document) ||
-      document.body.querySelector("article") === null
-    ) {
-      console.log("Not a readerable page");
-      return;
-    }
+    let articleAvailable = false;
+    let visibilityInitialized = false;
 
     const ui = await createShadowRootUi(ctx, {
       name: "floating-player-bar",
@@ -63,8 +58,59 @@ export default defineContentScript({
       },
     });
 
-    const togglePlayer = (message: PlayerMessage) => {
-      if (message.type !== "TOGGLE_PLAYER") return;
+    const refreshArticle = async () => {
+      if (
+        !isProbablyReaderable(document) ||
+        document.body.querySelector("article") === null
+      ) {
+        articleAvailable = false;
+        if (ui.mounted) ui.remove();
+        await browser.runtime.sendMessage({
+          type: "ARTICLE_LOADED",
+          article: null,
+        });
+        console.log("Not a readerable page");
+        return;
+      }
+
+      // Readability.parse() rewrites the document it receives. Keep that work
+      // off the live page so a site's styles and application DOM stay intact.
+      const documentClone = document.cloneNode(true) as Document;
+      const article = new Readability(documentClone).parse();
+
+      if (article === null) {
+        articleAvailable = false;
+        if (ui.mounted) ui.remove();
+        await browser.runtime.sendMessage({
+          type: "ARTICLE_LOADED",
+          article: null,
+        });
+        console.log("No article found on page.");
+        return;
+      }
+
+      articleAvailable = true;
+      const articleDocument = toArticleDocument(article);
+      await browser.runtime.sendMessage({
+        type: "ARTICLE_LOADED",
+        article: articleDocument,
+      });
+
+      if (!visibilityInitialized) {
+        visibilityInitialized = true;
+        ui.mount();
+      }
+
+      console.log("article", articleDocument);
+    };
+
+    const onMessage = (message: PlayerMessage | { type: string }) => {
+      if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
+        void refreshArticle();
+        return;
+      }
+
+      if (message.type !== "TOGGLE_PLAYER" || !articleAvailable) return;
 
       if (ui.mounted) {
         ui.remove();
@@ -73,37 +119,12 @@ export default defineContentScript({
       }
     };
 
-    browser.runtime.onMessage.addListener(togglePlayer);
+    browser.runtime.onMessage.addListener(onMessage);
     ctx.onInvalidated(() => {
-      browser.runtime.onMessage.removeListener(togglePlayer);
+      browser.runtime.onMessage.removeListener(onMessage);
     });
 
-    ui.mount();
-
-    // browser.tabs.onUpdated.addListener(() => {
-    //   alert("Highlighted")
-    // })
-    //
-    let videoObserver: MutationObserver | undefined;
-
-    // Readability.parse() rewrites the document it receives. Keep that work
-    // off the live page so a site's styles and application DOM stay intact.
-    const documentClone = document.cloneNode(true) as Document;
-    const reader = new Readability(documentClone);
-    const article = reader.parse();
-
-    if (article === null) {
-      console.log("No article found on page.");
-      return;
-    }
-
-    const articleDocument = toArticleDocument(article);
-    console.log("article", articleDocument);
-
-    browser.runtime.sendMessage({
-      type: "ARTICLE_LOADED",
-      article: articleDocument,
-    });
+    await refreshArticle();
 
     // browser.runtime.onMessage.addListener((message) => {
     //   if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {

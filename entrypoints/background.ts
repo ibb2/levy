@@ -33,16 +33,26 @@ export default defineBackground(() => {
   browser.runtime.onMessage.addListener(
     async (message, sender, sendResponse) => {
       if (message.type === "ARTICLE_LOADED") {
-        const article = message.article as ArticleDocument;
-        articleCache = message.article;
+        articleCache =
+          articleCache !== message.article
+            ? ((message.article as ArticleDocument | null) ?? null)
+            : articleCache;
       }
 
       if (articleCache !== null && articleCache !== undefined) {
         console.log("article, ", articleCache);
 
         if (message.command === "Play") {
-          console.log("Play message received");
-          await browser.tts.speak(articleCache?.textContent, { lang: "en-US" });
+          browser.tts.stop();
+          browser.tts.speak(
+            articleCache?.textContent,
+            { lang: "en-US" },
+            () => {
+              if (browser.runtime.lastError) {
+                console.error("Error: ", browser.runtime.lastError.message);
+              }
+            },
+          );
         }
 
         if (message.command === "Pause" && (await browser.tts.isSpeaking())) {
