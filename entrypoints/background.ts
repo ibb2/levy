@@ -1,5 +1,5 @@
 import { browser } from "wxt/browser";
-import type { PlayerMessage } from "@/shared/types";
+import type { ArticleDocument, PlayerMessage } from "@/shared/types";
 
 // interface BrowserWithSidebar {
 //   sidebarAction?: {
@@ -17,6 +17,8 @@ export default defineBackground(() => {
   //   }
   // }
 
+  let articleCache: ArticleDocument | null = null;
+
   const extensionAction = browser.action ?? browser.browserAction;
 
   extensionAction.onClicked.addListener((tab) => {
@@ -28,14 +30,26 @@ export default defineBackground(() => {
     );
   });
 
-  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.command === "Play") {
-      console.log("Play message received");
-    }
+  browser.runtime.onMessage.addListener(
+    async (message, sender, sendResponse) => {
+      if (message.type === "ARTICLE_LOADED") {
+        const article = message.article as ArticleDocument;
+        articleCache = message.article;
+      }
 
-    if (message.command === "Pause") {
-      console.log("Pause message received");
-    }
+      if (articleCache !== null && articleCache !== undefined) {
+        console.log("article, ", articleCache);
+
+        if (message.command === "Play") {
+          console.log("Play message received");
+          await browser.tts.speak(articleCache?.textContent, { lang: "en-US" });
+        }
+
+        if (message.command === "Pause" && (await browser.tts.isSpeaking())) {
+          console.log("Pause message received");
+          browser.tts.pause();
+        }
+      }
   });
 
   browser.tabs.onActivated.addListener(async (activeInfo) => {

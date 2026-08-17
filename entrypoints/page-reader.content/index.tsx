@@ -100,6 +100,11 @@ export default defineContentScript({
     const articleDocument = toArticleDocument(article);
     console.log("article", articleDocument);
 
+    browser.runtime.sendMessage({
+      type: "ARTICLE_LOADED",
+      article: articleDocument,
+    });
+
     // browser.runtime.onMessage.addListener((message) => {
     //   if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
     //     const content = document.body.querySelector("article");

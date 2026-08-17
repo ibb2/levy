@@ -21,7 +21,7 @@ export default defineConfig({
     name: "Levy",
     description:
       "A focused, cross-browser reading experience in your side-panel.",
-    permissions: ["storage", "tabs"],
+    permissions: ["storage", "tabs", "tts"],
     ...(browser === "firefox"
       ? {
           browser_action: {
