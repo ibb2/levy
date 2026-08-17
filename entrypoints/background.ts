@@ -28,6 +28,16 @@ export default defineBackground(() => {
     );
   });
 
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.command === "Play") {
+      console.log("Play message received");
+    }
+
+    if (message.command === "Pause") {
+      console.log("Pause message received");
+    }
+  });
+
   browser.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await browser.tabs.get(activeInfo.tabId);
     if (tab.id === undefined) return;
