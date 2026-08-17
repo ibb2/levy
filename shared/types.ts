@@ -20,6 +20,7 @@ export type ArticleDocument = {
   segments: Array<{ id: string; text: string }>;
 };
 
-export type PlayerMessage = {
-  type: "TOGGLE_PLAYER";
-};
+export type PlayerMessage =
+  | { type: "TOGGLE_PLAYER" }
+  | { type: "PAUSE_AUDIO" }
+  | { type: "PLAY_AUDIO"; audio: string; contentType: string };

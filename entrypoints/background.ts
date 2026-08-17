@@ -1,5 +1,13 @@
 import { browser } from "wxt/browser";
 import type { ArticleDocument, PlayerMessage } from "@/shared/types";
+import { generateSpeech } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+
+const orpheus = createOpenAI({
+  name: "orpheus-fastapi",
+  baseURL: "http://localhost:5005/v1",
+  apiKey: "not-empty",
+});
 
 // interface BrowserWithSidebar {
 //   sidebarAction?: {
@@ -43,21 +51,34 @@ export default defineBackground(() => {
         console.log("article, ", articleCache);
 
         if (message.command === "Play") {
-          browser.tts.stop();
-          browser.tts.speak(
-            articleCache?.textContent,
-            { lang: "en-US" },
-            () => {
-              if (browser.runtime.lastError) {
-                console.error("Error: ", browser.runtime.lastError.message);
-              }
-            },
-          );
+          const tabId = sender.tab?.id;
+          if (tabId === undefined) return;
+
+          try {
+            const speech = await generateSpeech({
+              model: orpheus.speech("orpheus"),
+              text: articleCache.textContent.slice(0, 999),
+              voice: "jess",
+              outputFormat: "wav",
+            });
+
+            const playbackMessage: PlayerMessage = {
+              type: "PLAY_AUDIO",
+              audio: speech.audio.base64,
+              contentType: speech.audio.mediaType || "audio/mpeg",
+            };
+            await browser.tabs.sendMessage(tabId, playbackMessage);
+          } catch (error) {
+            console.error("Unable to generate or play speech:", error);
+          }
         }
 
-        if (message.command === "Pause" && (await browser.tts.isSpeaking())) {
-          console.log("Pause message received");
-          browser.tts.pause();
+        if (message.command === "Pause") {
+          const tabId = sender.tab?.id;
+          if (tabId === undefined) return;
+
+          const pauseMessage: PlayerMessage = { type: "PAUSE_AUDIO" };
+          await browser.tabs.sendMessage(tabId, pauseMessage);
         }
       }
   });

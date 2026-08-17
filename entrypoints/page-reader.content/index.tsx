@@ -37,6 +37,30 @@ export default defineContentScript({
 
     let articleAvailable = false;
     let visibilityInitialized = false;
+    let audio: HTMLAudioElement | null = null;
+    let audioUrl: string | null = null;
+
+    const releaseAudio = () => {
+      audio?.pause();
+      audio = null;
+      if (audioUrl !== null) URL.revokeObjectURL(audioUrl);
+      audioUrl = null;
+    };
+
+    const playAudio = async (message: Extract<PlayerMessage, { type: "PLAY_AUDIO" }>) => {
+      releaseAudio();
+
+      const binary = atob(message.audio);
+      const bytes = Uint8Array.from(binary, (character) =>
+        character.charCodeAt(0),
+      );
+      audioUrl = URL.createObjectURL(
+        new Blob([bytes], { type: message.contentType }),
+      );
+      audio = new Audio(audioUrl);
+      audio.addEventListener("ended", releaseAudio, { once: true });
+      await audio.play();
+    };
 
     const ui = await createShadowRootUi(ctx, {
       name: "floating-player-bar",
@@ -105,6 +129,18 @@ export default defineContentScript({
     };
 
     const onMessage = (message: PlayerMessage | { type: string }) => {
+      if (message.type === "PLAY_AUDIO") {
+        void playAudio(message as Extract<PlayerMessage, { type: "PLAY_AUDIO" }>).catch(
+          (error) => console.error("Unable to play generated speech:", error),
+        );
+        return;
+      }
+
+      if (message.type === "PAUSE_AUDIO") {
+        audio?.pause();
+        return;
+      }
+
       if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
         void refreshArticle();
         return;
@@ -122,6 +158,7 @@ export default defineContentScript({
     browser.runtime.onMessage.addListener(onMessage);
     ctx.onInvalidated(() => {
       browser.runtime.onMessage.removeListener(onMessage);
+      releaseAudio();
     });
 
     await refreshArticle();
