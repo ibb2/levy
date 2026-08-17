@@ -19,3 +19,7 @@ export type ArticleDocument = {
   html: string; //  Raw html, sanitized
   segments: Array<{ id: string; text: string }>;
 };
+
+export type PlayerMessage = {
+  type: "TOGGLE_PLAYER";
+};

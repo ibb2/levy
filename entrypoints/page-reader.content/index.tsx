@@ -1,6 +1,7 @@
 import type {
   ArticleDocument,
   Element as ArticleElement,
+  PlayerMessage,
 } from "@/shared/types";
 import DOMPurify from "dompurify";
 import { isProbablyReaderable, Readability } from "@mozilla/readability";
@@ -54,12 +55,27 @@ export default defineContentScript({
         container.appendChild(app);
 
         const root = ReactDOM.createRoot(app);
-        root.render(<App />);
+        root.render(<App onHide={() => ui.remove()} />);
         return root;
       },
       onRemove: (root) => {
         root?.unmount();
       },
+    });
+
+    const togglePlayer = (message: PlayerMessage) => {
+      if (message.type !== "TOGGLE_PLAYER") return;
+
+      if (ui.mounted) {
+        ui.remove();
+      } else {
+        ui.mount();
+      }
+    };
+
+    browser.runtime.onMessage.addListener(togglePlayer);
+    ctx.onInvalidated(() => {
+      browser.runtime.onMessage.removeListener(togglePlayer);
     });
 
     ui.mount();
