@@ -54,7 +54,9 @@ export default defineBackground(() => {
           const tabId = sender.tab?.id;
           if (tabId === undefined) return;
 
+          console.log("Playing...")
           try {
+            console.log("AI")
             const speech = await generateSpeech({
               model: orpheus.speech("orpheus"),
               text: articleCache.textContent.slice(0, 999),
@@ -69,7 +71,12 @@ export default defineBackground(() => {
             };
             await browser.tabs.sendMessage(tabId, playbackMessage);
           } catch (error) {
-            console.error("Unable to generate or play speech:", error);
+            console.log("Fallback");
+            browser.tts.stop();
+            browser.tts.speak(articleCache.textContent.slice(0, 999), {
+              lang: "en-US",
+            });
+            console.log("Unable to generate or play speech:", error);
           }
         }
 
@@ -78,6 +85,7 @@ export default defineBackground(() => {
           if (tabId === undefined) return;
 
           const pauseMessage: PlayerMessage = { type: "PAUSE_AUDIO" };
+          browser.tts.pause()
           await browser.tabs.sendMessage(tabId, pauseMessage);
         }
       }
