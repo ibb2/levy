@@ -6,6 +6,8 @@ type WavFormat = {
   sampleRate: number;
   bitsPerSample: number;
   dataOffset: number;
+  dataSize: number;
+  wavSize: number;
 };
 
 const textDecoder = new TextDecoder("ascii");
@@ -32,8 +34,10 @@ const readWavFormat = (bytes: Uint8Array): WavFormat | null => {
   }
 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const wavSize = view.getUint32(4, true) + 8;
   let offset = 12;
-  let format: Omit<WavFormat, "dataOffset"> | null = null;
+  let format: Omit<WavFormat, "dataOffset" | "dataSize" | "wavSize"> | null =
+    null;
 
   while (offset + 8 <= bytes.length) {
     const name = readChunkName(bytes, offset);
@@ -54,7 +58,12 @@ const readWavFormat = (bytes: Uint8Array): WavFormat | null => {
       if (format === null) {
         throw new Error("LocalAI returned a WAV stream without format information.");
       }
-      return { ...format, dataOffset: contentOffset };
+      return {
+        ...format,
+        dataOffset: contentOffset,
+        dataSize: size,
+        wavSize,
+      };
     }
 
     const nextOffset = contentOffset + size + (size % 2);
@@ -70,7 +79,7 @@ export class StreamingWavPlayer {
   private readonly sources = new Set<AudioBufferSourceNode>();
   private port: ReturnType<typeof browser.runtime.connect> | null = null;
   private format: WavFormat | null = null;
-  private headerBytes = new Uint8Array();
+  private streamBytes = new Uint8Array();
   private pcmBytes = new Uint8Array();
   private nextStartTime = 0;
   private started = false;
@@ -140,20 +149,34 @@ export class StreamingWavPlayer {
   }
 
   private push(chunk: Uint8Array) {
-    if (this.format === null) {
-      this.headerBytes = joinBytes(this.headerBytes, chunk);
-      const format = readWavFormat(this.headerBytes);
-      if (format === null) return;
+    this.streamBytes = joinBytes(this.streamBytes, chunk);
+
+    // MLX Audio emits each generated audio chunk as its own complete WAV file.
+    // Strip every WAV header instead of treating later headers as PCM samples.
+    while (true) {
+      const format = readWavFormat(this.streamBytes);
+      if (format === null || this.streamBytes.length < format.wavSize) return;
 
       this.validateFormat(format);
-      this.format = format;
-      this.pcmBytes = this.headerBytes.slice(format.dataOffset);
-      this.headerBytes = new Uint8Array();
-    } else {
-      this.pcmBytes = joinBytes(this.pcmBytes, chunk);
-    }
+      if (
+        this.format !== null &&
+        (format.audioFormat !== this.format.audioFormat ||
+          format.channels !== this.format.channels ||
+          format.sampleRate !== this.format.sampleRate ||
+          format.bitsPerSample !== this.format.bitsPerSample)
+      ) {
+        throw new Error("MLX Audio changed WAV format during the stream.");
+      }
 
-    this.queueAudio(false);
+      this.format = format;
+      const dataEnd = Math.min(format.dataOffset + format.dataSize, format.wavSize);
+      this.pcmBytes = joinBytes(
+        this.pcmBytes,
+        this.streamBytes.slice(format.dataOffset, dataEnd),
+      );
+      this.streamBytes = this.streamBytes.slice(format.wavSize);
+      this.queueAudio(false);
+    }
   }
 
   private validateFormat(format: WavFormat) {

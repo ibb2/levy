@@ -2,8 +2,8 @@ import { browser } from "wxt/browser";
 import type { PlayerMessage } from "@/shared/types";
 
 const localAiModel =
-  import.meta.env.VITE_LOCALAI_TTS_MODEL || "omnivoice-cpp";
-const localAiTtsUrl = "http://127.0.0.1:8080/tts";
+  import.meta.env.VITE_LOCALAI_TTS_MODEL || "mlx-community/Kokoro-82M-bf16";
+const localAiTtsUrl = "http://localhost:8000/v1/audio/speech";
 
 const encodeBase64 = (bytes: Uint8Array) => {
   let binary = "";
@@ -74,7 +74,8 @@ export default defineBackground(() => {
                 input: message.text,
                 model: localAiModel,
                 response_format: "wav",
-                ...(stream ? { stream: true } : {}),
+                stream: true,
+                // voice: "cheerful_female",
               }),
               signal: controller.signal,
             });

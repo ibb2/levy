@@ -60,7 +60,7 @@ export default defineContentScript({
 
       const currentPlayer = new StreamingWavPlayer();
       player = currentPlayer;
-      void currentPlayer.play(articleText.slice(0, 999)).catch((error) => {
+      void currentPlayer.play(articleText).catch((error) => {
         if (
           player !== currentPlayer ||
           (error instanceof DOMException && error.name === "AbortError")
@@ -73,7 +73,7 @@ export default defineContentScript({
         if (speechPaused) return;
         void browser.runtime.sendMessage({
           type: "PLAY_FALLBACK_TTS",
-          text: articleText.slice(0, 999),
+          text: articleText,
         });
       });
     };
