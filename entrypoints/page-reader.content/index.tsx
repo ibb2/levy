@@ -9,6 +9,7 @@ import App from "./app";
 import ReactDOM from "react-dom/client";
 import "@/assets/tailwind.css";
 import "@/shared/index.css";
+import { StreamingWavPlayer } from "@/lib/streaming-wav-player";
 
 export default defineContentScript({
   // // Set manifest options
@@ -37,29 +38,50 @@ export default defineContentScript({
 
     let articleAvailable = false;
     let visibilityInitialized = false;
-    let audio: HTMLAudioElement | null = null;
-    let audioUrl: string | null = null;
+    let articleText = "";
+    let player: StreamingWavPlayer | null = null;
+    let speechPaused = false;
 
-    const releaseAudio = () => {
-      audio?.pause();
-      audio = null;
-      if (audioUrl !== null) URL.revokeObjectURL(audioUrl);
-      audioUrl = null;
+    const stopLocalSpeech = () => {
+      player?.stop();
+      player = null;
     };
 
-    const playAudio = async (message: Extract<PlayerMessage, { type: "PLAY_AUDIO" }>) => {
-      releaseAudio();
+    const playSpeech = () => {
+      if (player?.paused) {
+        speechPaused = false;
+        void player.resume();
+        return;
+      }
 
-      const binary = atob(message.audio);
-      const bytes = Uint8Array.from(binary, (character) =>
-        character.charCodeAt(0),
-      );
-      audioUrl = URL.createObjectURL(
-        new Blob([bytes], { type: message.contentType }),
-      );
-      audio = new Audio(audioUrl);
-      audio.addEventListener("ended", releaseAudio, { once: true });
-      await audio.play();
+      speechPaused = false;
+      stopLocalSpeech();
+      void browser.runtime.sendMessage({ type: "STOP_FALLBACK_TTS" });
+
+      const currentPlayer = new StreamingWavPlayer();
+      player = currentPlayer;
+      void currentPlayer.play(articleText.slice(0, 999)).catch((error) => {
+        if (
+          player !== currentPlayer ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
+          return;
+        }
+
+        console.error("Unable to stream speech from LocalAI:", error);
+        stopLocalSpeech();
+        if (speechPaused) return;
+        void browser.runtime.sendMessage({
+          type: "PLAY_FALLBACK_TTS",
+          text: articleText.slice(0, 999),
+        });
+      });
+    };
+
+    const pauseSpeech = () => {
+      speechPaused = true;
+      void player?.pause();
+      void browser.runtime.sendMessage({ type: "PAUSE_FALLBACK_TTS" });
     };
 
     const ui = await createShadowRootUi(ctx, {
@@ -74,7 +96,13 @@ export default defineContentScript({
         container.appendChild(app);
 
         const root = ReactDOM.createRoot(app);
-        root.render(<App onHide={() => ui.remove()} />);
+        root.render(
+          <App
+            onHide={() => ui.remove()}
+            onPlay={playSpeech}
+            onPause={pauseSpeech}
+          />,
+        );
         return root;
       },
       onRemove: (root) => {
@@ -88,11 +116,8 @@ export default defineContentScript({
         document.body.querySelector("article") === null
       ) {
         articleAvailable = false;
+        articleText = "";
         if (ui.mounted) ui.remove();
-        await browser.runtime.sendMessage({
-          type: "ARTICLE_LOADED",
-          article: null,
-        });
         console.log("Not a readerable page");
         return;
       }
@@ -104,21 +129,15 @@ export default defineContentScript({
 
       if (article === null) {
         articleAvailable = false;
+        articleText = "";
         if (ui.mounted) ui.remove();
-        await browser.runtime.sendMessage({
-          type: "ARTICLE_LOADED",
-          article: null,
-        });
         console.log("No article found on page.");
         return;
       }
 
       articleAvailable = true;
       const articleDocument = toArticleDocument(article);
-      await browser.runtime.sendMessage({
-        type: "ARTICLE_LOADED",
-        article: articleDocument,
-      });
+      articleText = articleDocument.textContent;
 
       if (!visibilityInitialized) {
         visibilityInitialized = true;
@@ -129,18 +148,6 @@ export default defineContentScript({
     };
 
     const onMessage = (message: PlayerMessage | { type: string }) => {
-      if (message.type === "PLAY_AUDIO") {
-        void playAudio(message as Extract<PlayerMessage, { type: "PLAY_AUDIO" }>).catch(
-          (error) => console.error("Unable to play generated speech:", error),
-        );
-        return;
-      }
-
-      if (message.type === "PAUSE_AUDIO") {
-        audio?.pause();
-        return;
-      }
-
       if (message.type === "TAB_CHANGED" || message.type === "TAB_UPDATED") {
         void refreshArticle();
         return;
@@ -158,7 +165,7 @@ export default defineContentScript({
     browser.runtime.onMessage.addListener(onMessage);
     ctx.onInvalidated(() => {
       browser.runtime.onMessage.removeListener(onMessage);
-      releaseAudio();
+      stopLocalSpeech();
     });
 
     await refreshArticle();

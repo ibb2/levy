@@ -132,6 +132,18 @@ For Firefox, use:
 npm run dev:firefox
 ```
 
+Local narration expects LocalAI at `http://127.0.0.1:8080` with a streaming
+TTS model available as `omnivoice-cpp`. To use a different model name,
+start Levy with:
+
+```sh
+VITE_LOCALAI_TTS_MODEL=your-model-name npm run dev
+```
+
+Levy requests streamed PCM WAV audio from LocalAI's `/tts` endpoint. If the
+backend explicitly reports that streaming is not implemented, Levy retries
+ordinary LocalAI TTS before using the browser's built-in text-to-speech voice.
+
 Click the Levy toolbar icon to open the reading panel. Chrome uses the Side Panel API; Firefox uses the Sidebar Action API.
 
 ### Production builds

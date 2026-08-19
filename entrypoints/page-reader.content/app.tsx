@@ -3,19 +3,20 @@ import { Button } from "@/components/ui/button";
 
 type AppProps = {
   onHide: () => void;
+  onPlay: () => void;
+  onPause: () => void;
 };
 
-export default ({ onHide }: AppProps) => {
-
+export default ({ onHide, onPlay, onPause }: AppProps) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const play = () => {
-    browser.runtime.sendMessage({ command: "Play" });
+    onPlay();
     setIsPlaying(true);
   };
 
   const pause = () => {
-    browser.runtime.sendMessage({ command: "Pause" });
+    onPause();
     setIsPlaying(false);
   };
 

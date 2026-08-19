@@ -22,5 +22,6 @@ export type ArticleDocument = {
 
 export type PlayerMessage =
   | { type: "TOGGLE_PLAYER" }
-  | { type: "PAUSE_AUDIO" }
-  | { type: "PLAY_AUDIO"; audio: string; contentType: string };
+  | { type: "PLAY_FALLBACK_TTS"; text: string }
+  | { type: "PAUSE_FALLBACK_TTS" }
+  | { type: "STOP_FALLBACK_TTS" };

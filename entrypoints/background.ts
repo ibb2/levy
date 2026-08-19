@@ -1,13 +1,18 @@
 import { browser } from "wxt/browser";
-import type { ArticleDocument, PlayerMessage } from "@/shared/types";
-import { generateSpeech } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import type { PlayerMessage } from "@/shared/types";
 
-const orpheus = createOpenAI({
-  name: "orpheus-fastapi",
-  baseURL: "http://localhost:5005/v1",
-  apiKey: "not-empty",
-});
+const localAiModel =
+  import.meta.env.VITE_LOCALAI_TTS_MODEL || "omnivoice-cpp";
+const localAiTtsUrl = "http://127.0.0.1:8080/tts";
+
+const encodeBase64 = (bytes: Uint8Array) => {
+  let binary = "";
+  const step = 32_768;
+  for (let offset = 0; offset < bytes.length; offset += step) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + step));
+  }
+  return btoa(binary);
+};
 
 // interface BrowserWithSidebar {
 //   sidebarAction?: {
@@ -25,8 +30,6 @@ export default defineBackground(() => {
   //   }
   // }
 
-  let articleCache: ArticleDocument | null = null;
-
   const extensionAction = browser.action ?? browser.browserAction;
 
   extensionAction.onClicked.addListener((tab) => {
@@ -39,56 +42,82 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener(
-    async (message, sender, sendResponse) => {
-      if (message.type === "ARTICLE_LOADED") {
-        articleCache =
-          articleCache !== message.article
-            ? ((message.article as ArticleDocument | null) ?? null)
-            : articleCache;
+    (message: PlayerMessage) => {
+      if (message.type === "PLAY_FALLBACK_TTS") {
+        browser.tts.stop();
+        browser.tts.speak(message.text, { lang: "en-US" });
       }
+      if (message.type === "PAUSE_FALLBACK_TTS") {
+        browser.tts.pause();
+      }
+      if (message.type === "STOP_FALLBACK_TTS") {
+        browser.tts.stop();
+      }
+    },
+  );
 
-      if (articleCache !== null && articleCache !== undefined) {
-        console.log("article, ", articleCache);
+  browser.runtime.onConnect.addListener((port) => {
+    if (port.name !== "LOCALAI_TTS") return;
 
-        if (message.command === "Play") {
-          const tabId = sender.tab?.id;
-          if (tabId === undefined) return;
+    const controller = new AbortController();
+    port.onDisconnect.addListener(() => controller.abort());
+    port.onMessage.addListener((message) => {
+      if (message.type !== "START_STREAM") return;
 
-          console.log("Playing...")
-          try {
-            console.log("AI")
-            const speech = await generateSpeech({
-              model: orpheus.speech("orpheus"),
-              text: articleCache.textContent.slice(0, 999),
-              voice: "jess",
-              outputFormat: "wav",
+      void (async () => {
+        try {
+          const requestSpeech = (stream: boolean) =>
+            fetch(localAiTtsUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                input: message.text,
+                model: localAiModel,
+                response_format: "wav",
+                ...(stream ? { stream: true } : {}),
+              }),
+              signal: controller.signal,
             });
 
-            const playbackMessage: PlayerMessage = {
-              type: "PLAY_AUDIO",
-              audio: speech.audio.base64,
-              contentType: speech.audio.mediaType || "audio/mpeg",
-            };
-            await browser.tabs.sendMessage(tabId, playbackMessage);
-          } catch (error) {
-            console.log("Fallback");
-            browser.tts.stop();
-            browser.tts.speak(articleCache.textContent.slice(0, 999), {
-              lang: "en-US",
-            });
-            console.log("Unable to generate or play speech:", error);
+          let response = await requestSpeech(true);
+          if (response.status === 500) {
+            const errorBody = await response.clone().text();
+            if (errorBody.includes("Unimplemented")) {
+              console.warn(
+                `${localAiModel} does not support streaming; retrying with ordinary LocalAI TTS.`,
+              );
+              response = await requestSpeech(false);
+            }
           }
-        }
 
-        if (message.command === "Pause") {
-          const tabId = sender.tab?.id;
-          if (tabId === undefined) return;
+          if (!response.ok) {
+            throw new Error(
+              `LocalAI returned ${response.status} ${response.statusText}.`,
+            );
+          }
+          if (response.body === null) {
+            throw new Error("LocalAI did not return a streaming response body.");
+          }
 
-          const pauseMessage: PlayerMessage = { type: "PAUSE_AUDIO" };
-          browser.tts.pause()
-          await browser.tabs.sendMessage(tabId, pauseMessage);
+          const reader = response.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            port.postMessage({
+              type: "AUDIO_CHUNK",
+              audio: encodeBase64(value),
+            });
+          }
+          port.postMessage({ type: "STREAM_END" });
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          port.postMessage({
+            type: "STREAM_ERROR",
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
-      }
+      })();
+    });
   });
 
   browser.tabs.onActivated.addListener(async (activeInfo) => {
